@@ -42,14 +42,14 @@ void motor (float a) {
 
 
   if (a >= 0) {
-    a = (a * 2, 55);
+    a = (a * 2.55);
     analogWrite(INA, a);
     analogWrite(INB, 0);
 
   }
   if (a < 0) {
 
-    a = a * (-2, 55);
+    a = a * (-2.55);
     analogWrite(INA, 0);
     analogWrite(INB, a);
 
