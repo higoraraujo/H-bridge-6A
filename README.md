@@ -27,6 +27,18 @@ Motor power must be connected directly to the H-bridge, respecting the motor's c
 3. (Optional) Open the Serial Monitor for debugging.
 4. The motor will alternate between forward and reverse rotations with programmed pauses.
 
+### Advanced control
+
+For more flexibility, try `Code/Code.ino`. This sketch configures Timer1 for a
+20 kHz PWM frequency and exposes helper functions to:
+
+- Smoothly ramp speed in either direction
+- Change PWM frequency at runtime
+- Drive the motor using only two hardware PWM pins (OC1A/OC1B)
+
+Use this version when you need finer control over switching frequency or wish
+to experiment with acceleration profiles.
+
 ## Safety
 - Use appropriate fuses to protect against short circuits.
 - Avoid touching the H-bridge or motor while powered.
