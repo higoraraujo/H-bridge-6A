@@ -1,68 +1,90 @@
 /*
-Code - Controling one motor DC +  H-bridge 6A + Arduino  - by Igor Araujo 2014
-2x pins PWM for control.
+ * Advanced DC Motor control with 6A H-bridge
+ * - Flexible PWM frequency via Timer1
+ * - Ramp support for smooth acceleration
+ * - Direction control using only two PWM channels
+ *
+ * Pins are configurable and must be PWM-capable.
+ */
 
-0 = Low Speed
-100 = Full Speed
+#include <Arduino.h>
 
-https://github.com/higoraraujo/H-bridge-6A
-http://www.igoraraujo.eng.br
+const uint8_t PIN_INA = 9;   // OC1A
+const uint8_t PIN_INB = 10;  // OC1B
+const uint16_t DEFAULT_PWM_FREQUENCY = 20000; // 20 kHz
 
-*/
-
-
-
-
-#define INA 5
-#define INB 6
+int currentSpeed = 0;        // -100 to 100
+uint16_t pwmTop = 0;         // Timer1 TOP value
 
 void setup() {
-
-
-  pinMode(INA, OUTPUT);
-  pinMode(INB, OUTPUT);
-
-
-
+  setupPWM(DEFAULT_PWM_FREQUENCY);
+  brake();
 }
 
 void loop() {
-
-
-  motor(50); // 50% Speed forward
-  delay(2000);
-  motor(-50); // 50% Speed backward
-  delay(2000);
-
+  // Example usage: ramp forward, then reverse
+  rampTo(100, 5, 20);   // to 100% speed
+  delay(1000);
+  rampTo(-100, 5, 20);  // to -100% speed
+  delay(1000);
 }
 
+// Configure Timer1 for Fast PWM with configurable frequency
+void setupPWM(uint16_t freq) {
+  pinMode(PIN_INA, OUTPUT);
+  pinMode(PIN_INB, OUTPUT);
 
+  // Reset Timer1 configuration
+  TCCR1A = 0;
+  TCCR1B = 0;
 
-void motor (float a) {
-  // Ensure the requested speed is within the valid range to avoid
-  // overflow when converting to the 0-255 PWM scale.
-  a = constrain(a, -100, 100);
+  // Fast PWM, TOP=ICR1, non-inverted on A/B
+  TCCR1A |= _BV(COM1A1) | _BV(COM1B1) | _BV(WGM11);
+  TCCR1B |= _BV(WGM13) | _BV(WGM12) | _BV(CS10); // no prescaler
 
-  // Convert percentage to a PWM value. Using an intermediate variable
-  // prevents writing floats directly to analogWrite and keeps the value
-  // within the expected byte range.
-  int pwm = (int)((a >= 0 ? a : -a) * 2.55);
+  setPWMFrequency(freq);
+}
 
-  if (a >= 0) {
-    analogWrite(INA, pwm);
-    analogWrite(INB, 0);
+// Change PWM frequency at runtime
+void setPWMFrequency(uint16_t freq) {
+  pwmTop = F_CPU / freq - 1;
+  ICR1 = pwmTop;
+  applyPWM(currentSpeed); // keep current duty
+}
+
+// Apply PWM value according to desired speed (-100..100)
+void applyPWM(int speed) {
+  speed = constrain(speed, -100, 100);
+  uint16_t duty = (uint32_t)abs(speed) * pwmTop / 100;
+
+  if (speed >= 0) {
+    OCR1A = duty;
+    OCR1B = 0;
   } else {
-    analogWrite(INA, 0);
-    analogWrite(INB, pwm);
+    OCR1A = 0;
+    OCR1B = duty;
+  }
+  currentSpeed = speed;
+}
+
+// Smoothly ramp to target speed
+void rampTo(int target, int step, uint16_t delayMs) {
+  target = constrain(target, -100, 100);
+  while (currentSpeed != target) {
+    int next = currentSpeed < target
+                ? min(currentSpeed + step, target)
+                : max(currentSpeed - step, target);
+    applyPWM(next);
+    delay(delayMs);
   }
 }
 
-
-
-
-
-
-
-
-
+// Coast / brake the motor
+void brake() {
+  OCR1A = 0;
+  OCR1B = 0;
+  digitalWrite(PIN_INA, LOW);
+  digitalWrite(PIN_INB, LOW);
+  currentSpeed = 0;
+}
 
