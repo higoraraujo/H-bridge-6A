@@ -39,23 +39,22 @@ void loop() {
 
 
 void motor (float a) {
+  // Ensure the requested speed is within the valid range to avoid
+  // overflow when converting to the 0-255 PWM scale.
+  a = constrain(a, -100, 100);
 
+  // Convert percentage to a PWM value. Using an intermediate variable
+  // prevents writing floats directly to analogWrite and keeps the value
+  // within the expected byte range.
+  int pwm = (int)((a >= 0 ? a : -a) * 2.55);
 
   if (a >= 0) {
-    a = (a * 2.55);
-    analogWrite(INA, a);
+    analogWrite(INA, pwm);
     analogWrite(INB, 0);
-
-  }
-  if (a < 0) {
-
-    a = a * (-2.55);
+  } else {
     analogWrite(INA, 0);
-    analogWrite(INB, a);
-
-
+    analogWrite(INB, pwm);
   }
-
 }
 
 
